@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDom from 'react-dom';
 import PropTypes from 'prop-types';
-import _ from 'lodash';
 import invariant from 'invariant';
 import classNames from 'classnames';
 import Mousetrap from 'mousetrap';
@@ -18,15 +17,16 @@ function tabStateFromProps(props) {
   const tabs = [];
   let idx = 0;
   React.Children.forEach(props.tabs, (tab) => {
-    invariant(
-      tab.key,
-      'There should be unique key in each Tab',
-    );
+    invariant(tab.key, 'There should be unique key in each Tab');
 
     tabs[idx] = tab;
     idx += 1;
   });
   return { tabs };
+}
+
+function isFunction(fName) {
+  return fName && {}.toString.call(fName) === '[object Function]';
 }
 
 class Tabs extends React.Component {
@@ -60,7 +60,7 @@ class Tabs extends React.Component {
   }
 
   getIndexOfTabByKey(key) {
-    return _.findIndex(this.state.tabs, tab => tab.key === key);
+    return this.state.tabs.findIndex(tab => tab.key === key);
   }
 
   getNextTabKey(key) {
@@ -92,7 +92,7 @@ class Tabs extends React.Component {
   }
 
   getOpenTabs(tabs) {
-    return _.filter(tabs, tab => !this.isClosed(tab.key));
+    return tabs.filter(tab => !this.isClosed(tab.key));
   }
 
   moveTabPosition(key1, key2) {
@@ -103,7 +103,7 @@ class Tabs extends React.Component {
 
   saveStartPositions() {
     // Do not save in state
-    this.startPositions = _.map(this.state.tabs, (tab) => {
+    this.startPositions = this.state.tabs.map((tab) => {
       const el = ReactDom.findDOMNode(this.refs[tab.key]);
       const pos = el ? el.getBoundingClientRect() : {};
       return {
@@ -117,12 +117,10 @@ class Tabs extends React.Component {
   cancelEventSafety(e) {
     const ev = e;
     if (typeof e.preventDefault !== 'function') {
-      ev.preventDefault = () => {
-      };
+      ev.preventDefault = () => {};
     }
     if (typeof e.stopPropagation !== 'function') {
-      ev.stopPropagation = () => {
-      };
+      ev.stopPropagation = () => {};
     }
     ev.preventDefault();
     ev.stopPropagation();
@@ -130,8 +128,7 @@ class Tabs extends React.Component {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  componentWillMount() {
-  }
+  componentWillMount() {}
 
   componentDidMount() {
     this.saveStartPositions();
@@ -153,8 +150,7 @@ class Tabs extends React.Component {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  componentWillUpdate() {
-  }
+  componentWillUpdate() {}
 
   componentDidUpdate() {
     this.saveStartPositions();
@@ -200,18 +196,15 @@ class Tabs extends React.Component {
   }
 
   handleDrag(key, e) {
-    const deltaX = (e.pageX || e.clientX);
-    _.each(this.startPositions, (pos) => {
+    const deltaX = e.pageX || e.clientX;
+    this.startPositions.forEach((pos) => {
       const tempMoved = pos.moved || 0;
-      const shoudBeSwap =
-        key !== pos.key &&
-        pos.pos.left + tempMoved < deltaX &&
-        deltaX < pos.pos.right + tempMoved;
+      const shoudBeSwap = key !== pos.key && pos.pos.left + tempMoved < deltaX && deltaX < pos.pos.right + tempMoved;
       if (shoudBeSwap) {
         const idx1 = this.getIndexOfTabByKey(key);
         const idx2 = this.getIndexOfTabByKey(pos.key);
         const minus = idx1 > idx2 ? 1 : -1;
-        const movePx = (minus * (pos.pos.right - pos.pos.left)) - tempMoved;
+        const movePx = minus * (pos.pos.right - pos.pos.left) - tempMoved;
         ReactDom.findDOMNode(this.refs[pos.key]).style.transform = `translate(${movePx}px, 0px)`;
         this.startPositions[idx2].moved = movePx;
       }
@@ -219,13 +212,10 @@ class Tabs extends React.Component {
   }
 
   handleDragStop(key, e) {
-    const deltaX = (e.pageX || e.clientX);
+    const deltaX = e.pageX || e.clientX;
     let swapedTabs = null;
-    _.each(this.startPositions, (pos) => {
-      const shoudBeSwap =
-        key !== pos.key &&
-        pos.pos.left < deltaX &&
-        deltaX < pos.pos.right;
+    this.startPositions.forEach((pos) => {
+      const shoudBeSwap = key !== pos.key && pos.pos.left < deltaX && deltaX < pos.pos.right;
       if (shoudBeSwap) {
         swapedTabs = this.moveTabPosition(key, pos.key);
       }
@@ -266,27 +256,33 @@ class Tabs extends React.Component {
 
   handleMouseEnter(key, onMouseEnter, e) {
     if (!this.dragging) {
-      this.setState({
-        hoveredTab: key,
-      }, () => {
-        if (_.isFunction(onMouseEnter)) {
-          onMouseEnter(e);
-        }
-      });
+      this.setState(
+        {
+          hoveredTab: key,
+        },
+        () => {
+          if (isFunction(onMouseEnter)) {
+            onMouseEnter(e);
+          }
+        },
+      );
     }
   }
 
   handleMouseLeave(key, onMouseLeave, e) {
     if (!this.dragging) {
       if (this.state.hoveredTab === key) {
-        this.setState({
-          hoveredTab: '',
-        }, () => {
-          if (_.isFunction(onMouseLeave)) {
-            onMouseLeave(e);
-          }
-        });
-      } else if (_.isFunction(onMouseLeave)) {
+        this.setState(
+          {
+            hoveredTab: '',
+          },
+          () => {
+            if (isFunction(onMouseLeave)) {
+              onMouseLeave(e);
+            }
+          },
+        );
+      } else if (isFunction(onMouseLeave)) {
         onMouseLeave(e);
       }
     }
@@ -307,16 +303,19 @@ class Tabs extends React.Component {
       }
 
       const shoudBeNotifyTabChange = this.state.selectedTab !== nextSelected;
-      this.setState({
-        closedTabs: this.state.closedTabs.concat([key]),
-        selectedTab: nextSelected,
-      }, () => {
-        const currentOpenTabs = this.getCurrentOpenTabs();
-        this.props.onTabClose(ev, key, currentOpenTabs);
-        if (shoudBeNotifyTabChange) {
-          this.props.onTabSelect(ev, nextSelected, currentOpenTabs);
-        }
-      });
+      this.setState(
+        {
+          closedTabs: this.state.closedTabs.concat([key]),
+          selectedTab: nextSelected,
+        },
+        () => {
+          const currentOpenTabs = this.getCurrentOpenTabs();
+          this.props.onTabClose(ev, key, currentOpenTabs);
+          if (shoudBeNotifyTabChange) {
+            this.props.onTabSelect(ev, nextSelected, currentOpenTabs);
+          }
+        },
+      );
     };
     if (this.props.shouldTabClose(ev, key)) {
       doClose();
@@ -342,7 +341,7 @@ class Tabs extends React.Component {
   moveLeft(e) {
     let nextSelected = this.getPrevTabKey(this.state.selectedTab);
     if (!nextSelected) {
-      nextSelected = _.last(this.props.tabs) ? _.last(this.props.tabs).key : '';
+      nextSelected = this.props.tabs.slice(-1)[0] ? this.props.tabs.slice(-1)[0].key : '';
     }
     if (nextSelected !== this.state.selectedTab) {
       this.setState({ selectedTab: nextSelected }, () => {
@@ -356,11 +355,11 @@ class Tabs extends React.Component {
       return '';
     }
     const onHoverStyle = StyleOverride.merge(hoverStyleBase, tab.props.tabStyles.tabCloseIconOnHover);
-    return (<CloseIcon
-      style={style}
-      hoverStyle={onHoverStyle}
-      className={classes}
-      onClick={this.handleCloseButtonClick.bind(this, tab.key)}>&times;</CloseIcon>);
+    return (
+      <CloseIcon style={style} hoverStyle={onHoverStyle} className={classes} onClick={this.handleCloseButtonClick.bind(this, tab.key)}>
+        &times;
+      </CloseIcon>
+    );
   }
 
   render() {
@@ -399,9 +398,8 @@ class Tabs extends React.Component {
     xtabClassNames.tabAfterTitle = classNames('rdTabAfterTitle', this.props.tabsClassNames.tabAfterTitle);
     xtabClassNames.tabCloseIcon = classNames('rdTabCloseIcon', this.props.tabsClassNames.tabCloseIcon);
 
-
     const content = [];
-    const tabs = _.map(this.state.tabs, (tab) => {
+    const tabs = this.state.tabs.map((tab) => {
       if (this.state.closedTabs.indexOf(tab.key) > -1) {
         return '';
       }
@@ -440,8 +438,9 @@ class Tabs extends React.Component {
         tabAfterStyle = StyleOverride.merge(StyleOverride.merge(tabInlineStyles.tabAfter, tabInlineStyles.tabAfterActive), tabStyles.tabAfterActive);
         tabTiteleStyle = StyleOverride.merge(StyleOverride.merge(tabInlineStyles.tabTitle, tabInlineStyles.tabTitleActive), tabStyles.tabTitleActive);
         tabClasses = classNames(tabClasses, 'rdTabActive', this.props.tabsClassNames.tabActive, tabClassNames.tabActive);
-        content.push(<TabContainer key={`tabContainer#${tab.key}`} selected={true}
-                                   style={containerStyle}>{tab}</TabContainer>);
+        content.push(<TabContainer key={`tabContainer#${tab.key}`} selected={true} style={containerStyle}>
+            {tab}
+          </TabContainer>);
       } else {
         if (this.state.hoveredTab === tab.key) {
           tabStyle = StyleOverride.merge(StyleOverride.merge(tabStyle, tabInlineStyles.tabOnHover), tabStyles.tabOnHover);
@@ -450,11 +449,9 @@ class Tabs extends React.Component {
           tabTiteleStyle = StyleOverride.merge(StyleOverride.merge(tabTiteleStyle, tabInlineStyles.tabTitleOnHover), tabStyles.tabTitleOnHover);
           tabClasses = classNames(tabClasses, 'rdTabHover', this.props.tabsClassNames.tabHover, tabClassNames.tabHover);
         }
-        content.push(<TabContainer
-          key={`tabContainer#${tab.key}`}
-          selected={false}
-          style={containerStyle}
-          hiddenStyle={hiddenContainerStyle}>{tab}</TabContainer>);
+        content.push(<TabContainer key={`tabContainer#${tab.key}`} selected={false} style={containerStyle} hiddenStyle={hiddenContainerStyle}>
+            {tab}
+          </TabContainer>);
       }
 
       // title will be shorten with inline style
@@ -481,23 +478,29 @@ class Tabs extends React.Component {
           bounds="parent"
           onStart={this.handleDragStart.bind(this, tab.key)}
           onDrag={this.handleDrag.bind(this, tab.key)}
-          onStop={this.handleDragStop.bind(this, tab.key)}>
-          <li style={tabStyle} className={tabClasses}
-              onClick={this.handleTabClick.bind(this, tab.key)}
-              onMouseEnter={this.handleMouseEnter.bind(this, tab.key, onMouseEnter)}
-              onMouseLeave={this.handleMouseLeave.bind(this, tab.key, onMouseLeave)}
-              ref={tab.key}
-              {...others}>
-            <span style={TabStyles.beforeTitle} className={tabBeforeTitleClasses}>{beforeTitle}</span>
-            <p style={tabTiteleStyle}
-               className={tabTitleClasses}
-               {...extraAttribute} >
+          onStop={this.handleDragStop.bind(this, tab.key)}
+        >
+          <li
+            style={tabStyle}
+            className={tabClasses}
+            onClick={this.handleTabClick.bind(this, tab.key)}
+            onMouseEnter={this.handleMouseEnter.bind(this, tab.key, onMouseEnter)}
+            onMouseLeave={this.handleMouseLeave.bind(this, tab.key, onMouseLeave)}
+            ref={tab.key}
+            {...others}
+          >
+            <span style={TabStyles.beforeTitle} className={tabBeforeTitleClasses}>
+              {beforeTitle}
+            </span>
+            <p style={tabTiteleStyle} className={tabTitleClasses} {...extraAttribute}>
               {title}
             </p>
-            <span style={TabStyles.afterTitle} className={tabAfterTitleClasses}>{afterTitle}</span>
+            <span style={TabStyles.afterTitle} className={tabAfterTitleClasses}>
+              {afterTitle}
+            </span>
             {closeButton}
-            <span style={tabBeforeStyle} className={tabBeforeClasses}/>
-            <span style={tabAfterStyle} className={tabAfterClasses}/>
+            <span style={tabBeforeStyle} className={tabBeforeClasses} />
+            <span style={tabAfterStyle} className={tabAfterClasses} />
           </li>
         </CustomDraggable>
       );
@@ -511,7 +514,7 @@ class Tabs extends React.Component {
             {this.props.tabAddButton}
           </li>
         </ul>
-        <span style={tabInlineStyles.tabBarAfter} className={xtabClassNames.tabBarAfter}/>
+        <span style={tabInlineStyles.tabBarAfter} className={xtabClassNames.tabBarAfter} />
         {content}
       </div>
     );
@@ -535,15 +538,11 @@ Tabs.defaultProps = {
   },
   tabsStyles: {},
   shortCutKeys: {},
-  tabAddButton: (<span>{'+'}</span>),
-  onTabSelect: () => {
-  },
-  onTabClose: () => {
-  },
-  onTabAddButtonClick: () => {
-  },
-  onTabPositionChange: () => {
-  },
+  tabAddButton: <span>{'+'}</span>,
+  onTabSelect: () => {},
+  onTabClose: () => {},
+  onTabAddButtonClick: () => {},
+  onTabPositionChange: () => {},
   shouldTabClose: () => true,
   keepSelectedTab: false,
   disableDrag: false,
